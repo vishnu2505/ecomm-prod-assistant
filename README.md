@@ -1,1 +1,1 @@
-# LIVE_CLASS
+# E-commerce Product Assistant
