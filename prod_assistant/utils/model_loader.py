@@ -38,6 +38,23 @@ class ModelLoader:
     """
 
     def __init__(self):
+        load_dotenv(override=True)
+        
+        # 2. Get the key
+        self.api_key = os.getenv("GOOGLE_API_KEY")
+        
+        # 3. CRITICAL FIX: Manually set it in os.environ 
+        # This fixes the 'DefaultCredentialsError' because the library 
+        # looks for this specific environment variable under the hood.
+        if self.api_key:
+            os.environ["GOOGLE_API_KEY"] = self.api_key
+        else:
+            # Raise error immediately if missing
+            raise ValueError(
+                "❌ GOOGLE_API_KEY is missing! \n"
+                "Please ensure you have created a '.env' file in the project root "
+                "and added: GOOGLE_API_KEY='AIza...'"
+            )
         self.api_key_mgr = ApiKeyManager()
         self.config = load_config()
         log.info("YAML config loaded", config_keys=list(self.config.keys()))

@@ -10,9 +10,9 @@ langchain-groq==0.3.6
 lxml==6.0.1
 python-dotenv==1.1.1
 python-multipart==0.0.20
-selenium==4.35.0
+#selenium==4.35.0
 streamlit==1.49.1
-undetected-chromedriver==3.5.5
+#undetected-chromedriver==3.5.5
 uvicorn==0.35.0
 structlog==25.4.0
 langgraph==0.6.7
@@ -21,4 +21,6 @@ langchain-mcp-adapters==0.1.10
 mcp==1.14.0
 ddgs==9.6.0
 langchain-openai==0.3.32
+playwright>=1.40.0
+datasets
 -e .

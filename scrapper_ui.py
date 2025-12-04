@@ -1,67 +1,51 @@
-
 import streamlit as st
-from prod_assistant.etl.data_scrapper import FlipkartScraper
-from prod_assistant.etl.data_ingestion import DataIngestion
+import pandas as pd
 import os
+from prod_assistant.etl.data_ingestion import DataIngestion
 
-flipkart_scraper = FlipkartScraper()
-output_path = "data/product_reviews.csv"
-st.title("📦 Product Review Scraper")
+# Configuration
+DATA_FILE = "data/product_reviews.csv"
 
-if "product_inputs" not in st.session_state:
-    st.session_state.product_inputs = [""]
+st.set_page_config(page_title="Data Manager", page_icon="⚙️")
+st.title("⚙️ Knowledge Base Admin")
+st.markdown("Use this dashboard to inspect your Amazon data and load it into the AI memory.")
 
-def add_product_input():
-    st.session_state.product_inputs.append("")
+# --- Status Check ---
+if os.path.exists(DATA_FILE):
+    df = pd.read_csv(DATA_FILE)
+    row_count = len(df)
+    st.success(f"✅ Data File Found: {row_count} Products loaded.")
+    
+    with st.expander("📊 Preview Data"):
+        st.dataframe(df.head(10))
+        
+    st.divider()
+    
+    st.subheader("🚀 Ingest to Vector Database")
+    st.markdown(
+        """
+        This will generate embeddings and store them in AstraDB.
+        **Note:** Depending on the data size, this may take 1-2 minutes.
+        """
+    )
+    
+    if st.button("Start Ingestion"):
+        with st.spinner("Processing... Do not close this tab."):
+            try:
+                ingestion = DataIngestion()
+                ingestion.run_pipeline()
+                st.balloons()
+                st.success("✅ Ingestion Complete! Your AI is now ready to chat.")
+            except Exception as e:
+                st.error("❌ Ingestion Failed")
+                st.exception(e)
 
-st.subheader("📝 Optional Product Description")
-product_description = st.text_area("Enter product description (used as an extra search keyword):")
-
-st.subheader("🛒 Product Names")
-updated_inputs = []
-for i, val in enumerate(st.session_state.product_inputs):
-    input_val = st.text_input(f"Product {i+1}", value=val, key=f"product_{i}")
-    updated_inputs.append(input_val)
-st.session_state.product_inputs = updated_inputs
-
-st.button("➕ Add Another Product", on_click=add_product_input)
-
-max_products = st.number_input("How many products per search?", min_value=1, max_value=10, value=1)
-review_count = st.number_input("How many reviews per product?", min_value=1, max_value=10, value=2)
-
-if st.button("🚀 Start Scraping"):
-    product_inputs = [p.strip() for p in st.session_state.product_inputs if p.strip()]
-    if product_description.strip():
-        product_inputs.append(product_description.strip())
-
-    if not product_inputs:
-        st.warning("⚠️ Please enter at least one product name or a product description.")
-    else:
-        final_data = []
-        for query in product_inputs:
-            st.write(f"🔍 Searching for: {query}")
-            results = flipkart_scraper.scrape_flipkart_products(query, max_products=max_products, review_count=review_count)
-            final_data.extend(results)
-
-        unique_products = {}
-        for row in final_data:
-            if row[1] not in unique_products:
-                unique_products[row[1]] = row
-
-        final_data = list(unique_products.values())
-        st.session_state["scraped_data"] = final_data  # store in session
-        flipkart_scraper.save_to_csv(final_data, output_path)
-        st.success("✅ Data saved to `data/product_reviews.csv`")
-        st.download_button("📥 Download CSV", data=open(output_path, "rb"), file_name="product_reviews.csv")
-
-# This stays OUTSIDE "if st.button('Start Scraping')"
-if "scraped_data" in st.session_state and st.button("🧠 Store in Vector DB (AstraDB)"):
-    with st.spinner("📡 Initializing ingestion pipeline..."):
-        try:
-            ingestion = DataIngestion()
-            st.info("🚀 Running ingestion pipeline...")
-            ingestion.run_pipeline()
-            st.success("✅ Data successfully ingested to AstraDB!")
-        except Exception as e:
-            st.error("❌ Ingestion failed!")
-            st.exception(e)
+else:
+    st.warning("⚠️ 'data/product_reviews.csv' not found.")
+    st.info(
+        """
+        **How to fix:**
+        Run the streaming converter script in your terminal to fetch data from Hugging Face:
+        `uv run python prod_assistant/etl/convert_amazon_data.py`
+        """
+    )
